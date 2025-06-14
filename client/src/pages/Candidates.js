@@ -6,6 +6,7 @@ import CandidateFilters from '../components/candidates/CandidateFilters';
 import CandidateTable from '../components/candidates/CandidateTable';
 import CandidateForm from '../components/candidates/CandidateForm';
 import EmployeeForm from '../components/employees/EmployeeForm';
+import API_BASE_URL from '../utils/api';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: '#6c47b6' },
@@ -82,7 +83,7 @@ const Candidates = () => {
   const fetchCandidates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/candidates', {
+      const response = await axios.get(`${API_BASE_URL}/candidates`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCandidates(response.data);
@@ -154,7 +155,7 @@ const Candidates = () => {
         }
       });
 
-      const response = await axios.post('http://localhost:5000/api/candidates', formDataToSend, {
+      const response = await axios.post(`${API_BASE_URL}/candidates`, formDataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -223,7 +224,7 @@ const Candidates = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`http://localhost:5000/api/candidates/${employeeFormData._id}/convert`, {
+      await axios.post(`${API_BASE_URL}/candidates/${employeeFormData._id}/convert`, {
         department: employeeFormData.department,
         joiningDate: employeeFormData.joiningDate
       }, {
@@ -272,7 +273,7 @@ const Candidates = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `http://localhost:5000/api/candidates/${candidateId}`,
+        `${API_BASE_URL}/candidates/${candidateId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -325,7 +326,7 @@ const Candidates = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/candidates/${candidateId}/resume`,
+        `${API_BASE_URL}/candidates/${candidateId}/resume`,
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: 'blob',
@@ -373,7 +374,7 @@ const Candidates = () => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/candidates/${candidateId}`, {
+      await axios.delete(`${API_BASE_URL}/candidates/${candidateId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

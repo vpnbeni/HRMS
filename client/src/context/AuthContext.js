@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import API_BASE_URL from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -23,20 +24,17 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get(
-        "http://localhost:5000/api/auth/me",
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
+      const response = await axios.get(`${API_BASE_URL}/auth/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const userData = response.data;
       setUser({
         ...userData,
         id: userData._id || userData.id,
-        userId: userData._id || userData.id
+        userId: userData._id || userData.id,
       });
     } catch (error) {
       console.error("Error refreshing user data:", error);
@@ -78,7 +76,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${API_BASE_URL}/auth/login`,
         {
           email,
           password,
@@ -91,7 +89,7 @@ export const AuthProvider = ({ children }) => {
       setUser({
         ...user,
         id: user.id || user._id, // Map to id field consistently
-        userId: user.id || user._id // Also set userId for consistency
+        userId: user.id || user._id, // Also set userId for consistency
       });
       navigate("/");
       return { success: true };

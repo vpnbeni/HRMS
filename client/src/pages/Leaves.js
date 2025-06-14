@@ -7,6 +7,7 @@ import LeaveFilters from "../components/leaves/LeaveFilters";
 import LeaveForm from "../components/leaves/LeaveForm";
 import LeaveCalendar from "../components/leaves/LeaveCalendar";
 import { useAuth } from "../context/AuthContext";
+import API_BASE_URL from "../utils/api";
 
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending", color: "#ffb300" },
@@ -43,7 +44,7 @@ const Leaves = () => {
   const fetchLeaves = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/leaves", {
+      const response = await axios.get(`${API_BASE_URL}/leaves`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLeaves(response.data);
@@ -106,7 +107,7 @@ const Leaves = () => {
 
         if (editId) {
           await axios.put(
-            `http://localhost:5000/api/leaves/${editId}`,
+            `${API_BASE_URL}/leaves/${editId}`,
             formDataToSend,
             {
               headers: {
@@ -116,7 +117,7 @@ const Leaves = () => {
             }
           );
         } else {
-          await axios.post("http://localhost:5000/api/leaves", formDataToSend, {
+          await axios.post(`${API_BASE_URL}/leaves`, formDataToSend, {
             headers: {
               "Content-Type": "multipart/form-data",
               Authorization: `Bearer ${token}`,
@@ -147,7 +148,7 @@ const Leaves = () => {
 
         if (editId) {
           await axios.put(
-            `http://localhost:5000/api/leaves/${editId}`,
+            `${API_BASE_URL}/leaves/${editId}`,
             dataToSend,
             {
               headers: {
@@ -157,7 +158,7 @@ const Leaves = () => {
             }
           );
         } else {
-          await axios.post("http://localhost:5000/api/leaves", dataToSend, {
+          await axios.post(`${API_BASE_URL}/leaves`, dataToSend, {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
@@ -225,7 +226,7 @@ const Leaves = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.patch(
-        `http://localhost:5000/api/leaves/${id}`,
+        `${API_BASE_URL}/leaves/${id}`,
         { status: newStatus },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -266,7 +267,7 @@ const Leaves = () => {
     
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/leaves/${id}`, {
+      await axios.delete(`${API_BASE_URL}/leaves/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

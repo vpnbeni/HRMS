@@ -14,4 +14,4 @@ Start-Process powershell -ArgumentList "npm start"
 
 Write-Host "Both client and server are starting..."
 Write-Host "Client will be available at: http://localhost:3000"
-Write-Host "Server will be available at: http://localhost:5000" 
+Write-Host "Server will be available at: https://hrms-server-gamma.vercel.app/" 

@@ -5,6 +5,7 @@ import '../styles/Employees.css';
 import EmployeeFilters from '../components/employees/EmployeeFilters';
 import EmployeeTable from '../components/employees/EmployeeTable';
 import EmployeeForm from '../components/employees/EmployeeForm';
+import API_BASE_URL from '../utils/api';
 
 const POSITIONS = [
   'Intern', 'Full Time', 'Junior', 'Senior', 'Team Lead'
@@ -60,7 +61,7 @@ const Employees = () => {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/employees', {
+      const response = await axios.get(`${API_BASE_URL}/employees`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEmployees(response.data);
@@ -98,7 +99,7 @@ const Employees = () => {
     try {
       const token = localStorage.getItem('token');
       if (editId) {
-        await axios.put(`http://localhost:5000/api/employees/${editId}`, formData, {
+        await axios.put(`${API_BASE_URL}/employees/${editId}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -109,7 +110,7 @@ const Employees = () => {
           autoClose: 3000,
         });
       } else {
-        await axios.post('http://localhost:5000/api/employees', formData, {
+        await axios.post(`${API_BASE_URL}/employees`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -179,7 +180,7 @@ const Employees = () => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/employees/${employeeId}`, {
+      await axios.delete(`${API_BASE_URL}/employees/${employeeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

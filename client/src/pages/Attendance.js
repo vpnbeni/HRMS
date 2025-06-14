@@ -5,6 +5,7 @@ import '../styles/Attendance.css';
 import { useAuth } from '../context/AuthContext';
 import EmployeeAttendanceList from '../components/attendance/EmployeeAttendanceList';
 import AttendanceFilters from '../components/attendance/AttendanceFilters';
+import API_BASE_URL from '../utils/api';
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Present', color: '#4caf50' },
@@ -25,7 +26,7 @@ const Attendance = () => {
   const fetchTodayAttendance = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/attendance/today', {
+      const response = await axios.get(`${API_BASE_URL}/attendance/today`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEmployeeAttendance(response.data);
@@ -42,7 +43,7 @@ const Attendance = () => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5000/api/attendance/bulk-update', {
+      await axios.post(`${API_BASE_URL}/attendance/bulk-update`, {
         attendanceUpdates: [{ employeeId, status: newStatus }]
       }, {
         headers: { Authorization: `Bearer ${token}` }
