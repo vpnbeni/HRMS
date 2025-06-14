@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import '../styles/Profile.css';
+import API_BASE_URL from '../utils/api';
 import {
   User,
   Mail,
@@ -62,7 +63,7 @@ const Profile = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'http://localhost:5000/api/auth/profile',
+        `${API_BASE_URL}/api/auth/profile`,
         formData,
         {
           headers: {

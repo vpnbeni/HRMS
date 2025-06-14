@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import '../styles/Auth.css';
+import API_BASE_URL from '../utils/api';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ const Register = () => {
     const toastId = toast.loading('Creating your account...');
 
     try {
-      await axios.post('http://localhost:5000/api/auth/register', {
+      await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name: formData.fullName,
         email: formData.email,
         password: formData.password

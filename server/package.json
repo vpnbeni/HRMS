@@ -4,8 +4,13 @@
     "description": "HRMS Server",
     "main": "index.js",
     "scripts": {
-        "start": "nodemon index.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "start": "node index.js",
+        "dev": "nodemon index.js",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "vercel-build": "echo hello"
+    },
+    "engines": {
+        "node": "18.x"
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
