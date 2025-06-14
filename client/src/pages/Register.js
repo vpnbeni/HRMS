@@ -43,7 +43,7 @@ const Register = () => {
     const toastId = toast.loading('Creating your account...');
 
     try {
-      await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      await axios.post(`${API_BASE_URL}/auth/register`, {
         name: formData.fullName,
         email: formData.email,
         password: formData.password
