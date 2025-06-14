@@ -75,6 +75,7 @@
     padding: 0;
     overflow: visible;
     position: relative;
+    z-index: 1;
 }
 
 .candidates-table {
@@ -86,6 +87,7 @@
 }
 
 .candidates-table thead tr {
+    z-index: 1;
     background: #6c47b6;
     color: #fff;
 }
@@ -115,8 +117,7 @@
     border-bottom: 1px solid #f0eafd;
     vertical-align: middle;
     overflow: visible !important;
-    position: relative;
-    z-index: 1;
+    position: static;
 }
 
 .candidates-table tr:last-child td {
@@ -151,6 +152,20 @@
     align-items: center;
     gap: 0.5rem;
     transition: border 0.2s, color 0.2s;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-pill.status-pending {
+    color: #6c47b6;
+    border-color: #6c47b6;
+}
+
+.status-pill.status-interviewed {
+    color: #ff9800;
+    border-color: #ff9800;
 }
 
 .status-pill.status-selected {
@@ -163,39 +178,65 @@
     border-color: #e53935;
 }
 
-.status-pill.status-new {
-    color: #6c47b6;
-    border-color: #6c47b6;
-}
-
 .status-pill .dropdown-arrow {
     font-size: 0.8rem;
     margin-left: 0.5rem;
 }
 
 .status-dropdown-menu {
-    position: absolute;
-    top: 110%;
-    left: 0;
+    position: fixed;
+    z-index: 9999;
     min-width: 120px;
+    max-width: 150px;
     background: #fff;
     border-radius: 1rem;
     box-shadow: 0 4px 16px rgba(108, 71, 182, 0.12);
-    z-index: 9999 !important;
     pointer-events: auto;
     overflow: hidden;
+    transform: translateZ(0);
+    opacity: 1;
+    margin-top: 2px;
+}
+
+.status-dropdown-menu::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
 }
 
 .status-dropdown-item {
     padding: 0.7rem 1.2rem;
+    position: relative;
     cursor: pointer;
     color: #6c47b6;
     font-size: 1rem;
     transition: background 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .status-dropdown-item:hover {
     background: #f3eafd;
+}
+
+.status-dropdown-divider {
+    height: 1px;
+    background: #e0d5f5;
+    margin: 0.5rem 0;
+}
+
+.status-dropdown-item.convert-option {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.status-dropdown-item.convert-option:hover {
+    background: #e8f5e9;
 }
 
 /* Action Menu */
@@ -227,16 +268,27 @@
 
 .action-dropdown-menu {
     position: absolute;
-    top: 120%;
-    right: 0;
     min-width: 170px;
     background: #fff;
     border-radius: 1rem;
     box-shadow: 0 4px 16px rgba(108, 71, 182, 0.12);
-    z-index: 9999 !important;
+    z-index: 1000;
     pointer-events: auto;
     display: flex;
     flex-direction: column;
+    right: 0;
+    top: 100%;
+    margin-top: 0.5rem;
+}
+
+.dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    background: transparent;
 }
 
 .action-dropdown-item {
@@ -245,6 +297,8 @@
     color: #3d246c;
     font-size: 1rem;
     transition: background 0.15s;
+    position: relative;
+    z-index: 1;
 }
 
 .action-dropdown-item:hover {
@@ -289,7 +343,6 @@
         transform: translateY(40px) scale(0.98);
         opacity: 0;
     }
-
     to {
         transform: none;
         opacity: 1;
@@ -363,6 +416,13 @@
     border-color: #6c47b6;
 }
 
+.modal-form-group input:disabled {
+    background: #f8f8f8;
+    color: #999;
+    cursor: not-allowed;
+    border-color: #e0e0e0;
+}
+
 .file-upload-group {
     display: flex;
     align-items: center;
@@ -390,6 +450,18 @@
 .file-upload-label:hover {
     border-color: #6c47b6;
     color: #4b2e8c;
+}
+
+.file-upload-label.disabled {
+    background: #f8f8f8;
+    color: #999;
+    cursor: not-allowed;
+    border-color: #e0e0e0;
+}
+
+.file-upload-label.disabled:hover {
+    border-color: #e0e0e0;
+    color: #999;
 }
 
 .upload-icon {

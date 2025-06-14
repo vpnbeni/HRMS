@@ -214,7 +214,6 @@
 
 /* Content Area */
 .content {
-  padding: 2rem;
   flex: 1;
   overflow-y: auto;
 }
@@ -490,6 +489,15 @@
 
 .header-avatar {
   margin-left: 0.7rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6c47b6;
+  transition: color 0.2s;
+}
+
+.header-avatar:hover {
+  color: #4b2e8c;
 }
 
 .avatar-box {
@@ -497,6 +505,114 @@
   height: 40px;
   background: #e0d3f7;
   border-radius: 50%;
+}
+
+/* User Dropdown Styles */
+.user-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 260px;
+  background: #fff;
+  border-radius: 1.2rem;
+  box-shadow: 0 8px 32px rgba(108, 71, 182, 0.15);
+  border: 1.5px solid #f0eafd;
+  z-index: 1000;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  animation: dropdownIn 0.2s ease-out;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  background: linear-gradient(135deg, #6c47b6 0%, #8b5fbf 100%);
+  color: #fff;
+}
+
+.user-avatar-large {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  color: #fff;
+}
+
+.user-email {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: #f0eafd;
+  margin: 0.5rem 0;
+}
+
+.user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.8rem 1.5rem;
+  background: none;
+  border: none;
+  color: #3d246c;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.user-dropdown-item:hover {
+  background: #f8f6ff;
+  color: #6c47b6;
+}
+
+.user-dropdown-item.logout-item {
+  color: #e53935;
+}
+
+.user-dropdown-item.logout-item:hover {
+  background: #ffeaea;
+  color: #d32f2f;
+}
+
+.user-dropdown-item span {
+  flex: 1;
 }
 
 /* Remove old sidebar/header styles for background, color, and box-shadow */

@@ -1,70 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import '../styles/Leaves.css';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import "../styles/Leaves.css";
+import LeaveTable from "../components/leaves/LeaveTable";
+import LeaveFilters from "../components/leaves/LeaveFilters";
+import LeaveForm from "../components/leaves/LeaveForm";
+import LeaveCalendar from "../components/leaves/LeaveCalendar";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pending', color: '#ffb300' },
-  { value: 'approved', label: 'Approved', color: '#4caf50' },
-  { value: 'rejected', label: 'Rejected', color: '#e53935' }
+  { value: "pending", label: "Pending", color: "#ffb300" },
+  { value: "approved", label: "Approved", color: "#4caf50" },
+  { value: "rejected", label: "Rejected", color: "#e53935" },
 ];
 
 const Leaves = () => {
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState({
-    type: '',
-    startDate: '',
-    endDate: '',
-    reason: '',
-    status: 'pending',
-    document: null
+    employee: "",
+    position: "",
+    type: "",
+    startDate: "",
+    endDate: "",
+    reason: "",
+    status: "pending",
+    document: null,
   });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(null);
-  const formRef = useRef();
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   useEffect(() => {
     fetchLeaves();
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleClickOutside = (event) => {
-    if (formRef.current && !formRef.current.contains(event.target)) {
-      setShowForm(false);
-      setEditId(null);
-    }
-    setActionMenuOpen(null);
-    setStatusDropdownOpen(null);
-  };
 
   const fetchLeaves = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/leaves');
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:5000/api/leaves", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setLeaves(response.data);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching leaves:', error);
-      toast.error('Failed to fetch leave requests');
+      console.error("Error fetching leaves:", error);
+      toast.error("Failed to fetch leave requests");
       setLoading(false);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: files ? files[0] : value
+      [name]: files ? files[0] : value,
     }));
   };
 
   const isFormValid = () => {
     return (
+      formData.employee &&
       formData.type &&
       formData.startDate &&
       formData.endDate &&
@@ -74,82 +75,235 @@ const Leaves = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid()) return;
+    if (!isFormValid() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const toastId = toast.loading(editId ? 'Updating leave request...' : 'Submitting leave request...');
+
     try {
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach(key => {
-        formDataToSend.append(key, formData[key]);
-      });
-      if (editId) {
-        await axios.put(`http://localhost:5000/api/leaves/${editId}`, formDataToSend, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+      const token = localStorage.getItem("token");
+
+      // Prepare data - handle file upload if needed
+      if (formData.document) {
+        const formDataToSend = new FormData();
+        Object.keys(formData).forEach((key) => {
+          if (key !== "position" && formData[key] !== null) {
+            formDataToSend.append(key, formData[key]);
+          }
         });
+
+        // Calculate total days
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const diffTime = Math.abs(end - start);
+        const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        formDataToSend.append("totalDays", totalDays);
+        
+        // Add current user as createdBy
+        if (user && (user.id || user.userId)) {
+          formDataToSend.append("createdBy", user.id || user.userId);
+        }
+
+        if (editId) {
+          await axios.put(
+            `http://localhost:5000/api/leaves/${editId}`,
+            formDataToSend,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        } else {
+          await axios.post("http://localhost:5000/api/leaves", formDataToSend, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
       } else {
-        await axios.post('http://localhost:5000/api/leaves', formDataToSend, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        // No file, send JSON
+        // Calculate total days
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const diffTime = Math.abs(end - start);
+        const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        
+        const dataToSend = {
+          employee: formData.employee,
+          type: formData.type,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          reason: formData.reason,
+          status: formData.status,
+          totalDays: totalDays,
+          createdBy: user?.id || user?.userId
+        };
+        
+        console.log('Sending data:', dataToSend);
+        console.log('Current user:', user);
+
+        if (editId) {
+          await axios.put(
+            `http://localhost:5000/api/leaves/${editId}`,
+            dataToSend,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        } else {
+          await axios.post("http://localhost:5000/api/leaves", dataToSend, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
       }
       setShowForm(false);
       setEditId(null);
       fetchLeaves();
       setFormData({
-        type: '',
-        startDate: '',
-        endDate: '',
-        reason: '',
-        status: 'pending',
-        document: null
+        employee: "",
+        position: "",
+        type: "",
+        startDate: "",
+        endDate: "",
+        reason: "",
+        status: "pending",
+        document: null,
       });
-      toast.success('Leave request submitted successfully');
+      
+      toast.update(toastId, {
+        render: editId ? 'Leave request updated successfully!' : 'Leave request submitted successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (error) {
-      console.error('Error saving leave request:', error);
-      toast.error('Failed to submit leave request');
+      console.error("Error saving leave request:", error);
+      
+      let errorMessage = `Failed to ${editId ? 'update' : 'submit'} leave request. Please try again.`;
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = (leave) => {
     setFormData({
+      employee: leave.employee._id,
+      position: leave.employee.position,
       type: leave.type,
-      startDate: leave.startDate?.slice(0, 10) || '',
-      endDate: leave.endDate?.slice(0, 10) || '',
+      startDate: leave.startDate?.slice(0, 10) || "",
+      endDate: leave.endDate?.slice(0, 10) || "",
       reason: leave.reason,
       status: leave.status,
-      document: null
+      document: null,
     });
     setEditId(leave._id);
     setShowForm(true);
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
+    const toastId = toast.loading('Updating status...');
+    
     try {
-      await axios.patch(`http://localhost:5000/api/leaves/${id}`, { status: newStatus });
+      const token = localStorage.getItem("token");
+      await axios.patch(
+        `http://localhost:5000/api/leaves/${id}`,
+        { status: newStatus },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      toast.update(toastId, {
+        render: 'Leave request status updated successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
       fetchLeaves();
-      toast.success('Leave request status updated');
     } catch (error) {
-      console.error('Error updating leave status:', error);
-      toast.error('Failed to update leave request status');
+      console.error("Error updating leave status:", error);
+      
+      let errorMessage = 'Failed to update leave request status. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this leave request?')) {
+      return;
+    }
+    
+    const toastId = toast.loading('Deleting leave request...');
+    
     try {
-      await axios.delete(`http://localhost:5000/api/leaves/${id}`);
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/leaves/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      toast.update(toastId, {
+        render: 'Leave request deleted successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
       fetchLeaves();
-      toast.success('Leave request deleted successfully');
     } catch (error) {
-      console.error('Error deleting leave request:', error);
-      toast.error('Failed to delete leave request');
+      console.error("Error deleting leave request:", error);
+      
+      let errorMessage = 'Failed to delete leave request. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
-  const filteredLeaves = leaves.filter(leave => {
-    const employeeName = `${leave.employee.firstName} ${leave.employee.lastName}`.toLowerCase();
+  const filteredLeaves = leaves.filter((leave) => {
+    const employeeName =
+      `${leave.employee.firstName} ${leave.employee.lastName}`.toLowerCase();
     const matchesSearch = employeeName.includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || leave.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const approvedLeaves = leaves.filter(leave => leave.status === 'approved');
+  const approvedLeaves = leaves.filter((leave) => leave.status === "approved");
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -157,255 +311,46 @@ const Leaves = () => {
 
   return (
     <div className="leaves-page">
-      <div className="leaves-controls">
-        <select
-          className="filter-dropdown"
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
-          <option value="">Status</option>
-          {STATUS_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <input
-          className="search-bar"
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-        <button className="add-leave-btn" onClick={() => { setShowForm(true); setEditId(null); }}>
-          Add Leave
-        </button>
-      </div>
+      <LeaveFilters
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        onAddClick={() => {
+          setShowForm(true);
+          setEditId(null);
+        }}
+        STATUS_OPTIONS={STATUS_OPTIONS}
+      />
       <div className="leaves-main">
-        <div className="leaves-table-container">
-          <table className="leaves-table">
-            <thead>
-              <tr>
-                <th>Profile</th>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Docs</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeaves.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center' }}>No leave requests found.</td></tr>
-              ) : (
-                filteredLeaves.map((leave) => (
-                  <tr key={leave._id}>
-                    <td>
-                      <div className="employee-avatar">
-                        {leave.employee.profileUrl ? (
-                          <img src={leave.employee.profileUrl} alt="profile" />
-                        ) : (
-                          <span>{leave.employee.firstName?.charAt(0) || 'U'}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{leave.employee.firstName} {leave.employee.lastName}</td>
-                    <td>{new Date(leave.startDate).toLocaleDateString()}</td>
-                    <td>{leave.reason}</td>
-                    <td>
-                      <div className="status-pill-dropdown">
-                        <button
-                          className={`status-pill status-${leave.status}`}
-                          style={{ borderColor: STATUS_OPTIONS.find(opt => opt.value === leave.status)?.color }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            setStatusDropdownOpen(leave._id === statusDropdownOpen ? null : leave._id);
-                          }}
-                        >
-                          {STATUS_OPTIONS.find(opt => opt.value === leave.status)?.label || leave.status}
-                          <span className="dropdown-arrow">▼</span>
-                        </button>
-                        {statusDropdownOpen === leave._id && (
-                          <div className="status-dropdown-menu">
-                            {STATUS_OPTIONS.map(opt => (
-                              <div
-                                key={opt.value}
-                                className="status-dropdown-item"
-                                onClick={() => {
-                                  handleStatusUpdate(leave._id, opt.value);
-                                  setStatusDropdownOpen(null);
-                                }}
-                              >
-                                {opt.label}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      {leave.documentUrl ? (
-                        <a href={leave.documentUrl} target="_blank" rel="noopener noreferrer">View</a>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="action-menu-container">
-                        <button
-                          className="action-menu-btn"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setActionMenuOpen(leave._id === actionMenuOpen ? null : leave._id);
-                          }}
-                        >
-                          <span className="dot"></span>
-                          <span className="dot"></span>
-                          <span className="dot"></span>
-                        </button>
-                        {actionMenuOpen === leave._id && (
-                          <div className="action-dropdown-menu">
-                            <div
-                              className="action-dropdown-item"
-                              onClick={() => {
-                                handleEdit(leave);
-                                setActionMenuOpen(null);
-                              }}
-                            >
-                              Edit
-                            </div>
-                            <div
-                              className="action-dropdown-item delete"
-                              onClick={() => {
-                                handleDelete(leave._id);
-                                setActionMenuOpen(null);
-                              }}
-                            >
-                              Delete
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="leaves-calendar-container">
-          <div className="calendar-card">
-            <div className="calendar-header">Leave Calendar</div>
-            {/* Placeholder for calendar UI - you can integrate a calendar library here */}
-            <div className="calendar-placeholder">(Calendar UI Here)</div>
-            <div className="approved-leaves-list">
-              <div className="approved-leaves-title">Approved Leaves</div>
-              {approvedLeaves.length === 0 ? (
-                <div className="no-approved-leaves">No approved leaves.</div>
-              ) : (
-                approvedLeaves.map(leave => (
-                  <div key={leave._id} className="approved-leave-item">
-                    <div className="employee-avatar small">
-                      {leave.employee.profileUrl ? (
-                        <img src={leave.employee.profileUrl} alt="profile" />
-                      ) : (
-                        <span>{leave.employee.firstName?.charAt(0) || 'U'}</span>
-                      )}
-                    </div>
-                    <div className="approved-leave-info">
-                      <div className="approved-leave-name">{leave.employee.firstName} {leave.employee.lastName}</div>
-                      <div className="approved-leave-date">{new Date(leave.startDate).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <LeaveTable
+          leaves={filteredLeaves}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onStatusUpdate={handleStatusUpdate}
+          statusDropdownOpen={statusDropdownOpen}
+          setStatusDropdownOpen={setStatusDropdownOpen}
+          actionMenuOpen={actionMenuOpen}
+          setActionMenuOpen={setActionMenuOpen}
+          STATUS_OPTIONS={STATUS_OPTIONS}
+        />
+        <LeaveCalendar approvedLeaves={approvedLeaves} />
       </div>
       {showForm && (
-        <div className="modal-overlay">
-          <div className="modal-container" ref={formRef}>
-            <div className="modal-header">
-              <span>{editId ? 'Edit Leave' : 'Add New Leave'}</span>
-              <button className="modal-close" onClick={() => { setShowForm(false); setEditId(null); }}>×</button>
-            </div>
-            <form className="modal-form" onSubmit={handleSubmit}>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Leave Type<span>*</span></label>
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Leave Type</option>
-                    <option value="annual">Annual Leave</option>
-                    <option value="sick">Sick Leave</option>
-                    <option value="personal">Personal Leave</option>
-                    <option value="maternity">Maternity Leave</option>
-                    <option value="paternity">Paternity Leave</option>
-                  </select>
-                </div>
-                <div className="modal-form-group">
-                  <label>Designation<span>*</span></label>
-                  <input
-                    type="text"
-                    name="designation"
-                    placeholder="Designation"
-                    value={formData.designation || ''}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Leave Date<span>*</span></label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Documents</label>
-                  <input
-                    type="file"
-                    name="document"
-                    onChange={handleInputChange}
-                    accept=".pdf,.doc,.docx"
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group" style={{ flex: 2 }}>
-                  <label>Reason<span>*</span></label>
-                  <input
-                    type="text"
-                    name="reason"
-                    placeholder="Reason"
-                    value={formData.reason}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="modal-save-btn"
-                disabled={!isFormValid()}
-              >
-                Save
-              </button>
-            </form>
-          </div>
-        </div>
+        <LeaveForm
+          formData={formData}
+          handleInputChange={handleInputChange}
+          handleSubmit={handleSubmit}
+          isFormValid={isFormValid}
+          onClose={() => {
+            setShowForm(false);
+            setEditId(null);
+          }}
+          editId={editId}
+        />
       )}
     </div>
   );
 };
 
-export default Leaves; 
+export default Leaves;

@@ -1,10 +1,15 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import '../styles/Candidates.css';
+import CandidateFilters from '../components/candidates/CandidateFilters';
+import CandidateTable from '../components/candidates/CandidateTable';
+import CandidateForm from '../components/candidates/CandidateForm';
+import EmployeeForm from '../components/employees/EmployeeForm';
 
 const STATUS_OPTIONS = [
-  { value: 'new', label: 'New', color: '#6c47b6' },
+  { value: 'pending', label: 'Pending', color: '#6c47b6' },
+  { value: 'interviewed', label: 'Interviewed', color: '#ff9800' },
   { value: 'selected', label: 'Selected', color: '#4caf50' },
   { value: 'rejected', label: 'Rejected', color: '#e53935' },
 ];
@@ -13,6 +18,7 @@ const Candidates = () => {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -20,14 +26,29 @@ const Candidates = () => {
     phone: '',
     position: '',
     experience: '',
-    resume: null
+    resume: null,
+  });
+  const [employeeFormData, setEmployeeFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    position: '',
+    department: '',
+    joiningDate: '',
+    profileUrl: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const formRef = useRef();
+  const employeeFormRef = useRef();
+  const statusDropdownRef = useRef();
+  const actionMenuRef = useRef();
 
   useEffect(() => {
     fetchCandidates();
@@ -39,15 +60,30 @@ const Candidates = () => {
     if (formRef.current && !formRef.current.contains(event.target)) {
       setShowForm(false);
     }
-    setActionMenuOpen(null);
-    setStatusDropdownOpen(null);
+    if (employeeFormRef.current && !employeeFormRef.current.contains(event.target)) {
+      setShowEmployeeForm(false);
+    }
+    if (
+      statusDropdownRef.current &&
+      !statusDropdownRef.current.contains(event.target) &&
+      !event.target.closest('.status-pill-dropdown')
+    ) {
+      setStatusDropdownOpen(null);
+    }
+    if (
+      actionMenuRef.current &&
+      !actionMenuRef.current.contains(event.target) &&
+      !event.target.closest('.action-menu-container')
+    ) {
+      setActionMenuOpen(null);
+    }
   };
 
   const fetchCandidates = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:5000/api/candidates', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setCandidates(response.data);
     } catch (error) {
@@ -60,16 +96,21 @@ const Candidates = () => {
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === 'resume' && files && files[0]) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: files[0]
+        [name]: files[0],
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
+  };
+
+  const handleEmployeeInputChange = (e) => {
+    const { name, value } = e.target;
+    setEmployeeFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const isFormValid = () => {
@@ -84,32 +125,50 @@ const Candidates = () => {
     );
   };
 
+  const isEmployeeFormValid = () => {
+    return (
+      employeeFormData.firstName &&
+      employeeFormData.lastName &&
+      employeeFormData.email &&
+      employeeFormData.phone &&
+      employeeFormData.position &&
+      employeeFormData.department &&
+      employeeFormData.joiningDate
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid()) return;
-    
+    if (!isFormValid() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const toastId = toast.loading('Adding candidate...');
+
     try {
       const token = localStorage.getItem('token');
       const formDataToSend = new FormData();
-      
-      formDataToSend.append('firstName', formData.firstName);
-      formDataToSend.append('lastName', formData.lastName);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('position', formData.position);
-      formDataToSend.append('experience', formData.experience);
-      if (formData.resume) {
-        formDataToSend.append('resume', formData.resume);
-      }
+
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== null) {
+          formDataToSend.append(key, value);
+        }
+      });
 
       const response = await axios.post('http://localhost:5000/api/candidates', formDataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       if (response.status === 201 || response.status === 200) {
+        toast.update(toastId, {
+          render: 'Candidate added successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+        });
+        
         setShowForm(false);
         setFormData({
           firstName: '',
@@ -118,77 +177,243 @@ const Candidates = () => {
           phone: '',
           position: '',
           experience: '',
-          resume: null
+          resume: null,
         });
         fetchCandidates();
       }
     } catch (error) {
       console.error('Error creating candidate:', error);
+      
+      let errorMessage = 'Failed to add candidate. Please try again.';
+      
+      if (error.response?.data) {
+        const { message, errorType } = error.response.data;
+        
+        switch (errorType) {
+          case 'DUPLICATE_EMAIL':
+            errorMessage = message;
+            break;
+          case 'VALIDATION_ERROR':
+            errorMessage = message;
+            break;
+          case 'SERVER_ERROR':
+            errorMessage = message;
+            break;
+          default:
+            errorMessage = message || errorMessage;
+        }
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEmployeeSubmit = async (e) => {
+    e.preventDefault();
+    if (!isEmployeeFormValid()) return;
+
+    const toastId = toast.loading('Converting to employee...');
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`http://localhost:5000/api/candidates/${employeeFormData._id}/convert`, {
+        department: employeeFormData.department,
+        joiningDate: employeeFormData.joiningDate
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      toast.update(toastId, {
+        render: 'Candidate converted to employee successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
+      setShowEmployeeForm(false);
+      setEmployeeFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        position: '',
+        department: '',
+        joiningDate: '',
+        profileUrl: ''
+      });
+      fetchCandidates();
+    } catch (error) {
+      console.error('Error converting candidate to employee:', error);
+      
+      let errorMessage = 'Failed to convert candidate to employee. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
   const handleStatusChange = async (candidateId, newStatus) => {
+    const toastId = toast.loading('Updating status...');
+    
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `http://localhost:5000/api/candidates/${candidateId}/status`,
+        `http://localhost:5000/api/candidates/${candidateId}`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      toast.update(toastId, {
+        render: 'Status updated successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
       fetchCandidates();
+      setStatusDropdownOpen(null);
     } catch (error) {
       console.error('Error updating candidate status:', error);
+      
+      let errorMessage = 'Failed to update status. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
+  const handleConvertToEmployee = (candidate) => {
+    setEmployeeFormData({
+      _id: candidate._id,
+      firstName: candidate.firstName,
+      lastName: candidate.lastName,
+      email: candidate.email,
+      phone: candidate.phone,
+      position: candidate.position,
+      department: '',
+      joiningDate: '',
+      profileUrl: ''
+    });
+    setShowEmployeeForm(true);
+    setStatusDropdownOpen(null);
+  };
+
   const handleDownloadResume = async (candidateId) => {
+    const toastId = toast.loading('Downloading resume...');
+    
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `http://localhost:5000/api/candidates/${candidateId}/resume`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          responseType: 'blob'
+          responseType: 'blob',
         }
       );
+      const filename = response.headers['content-disposition']?.split('filename=')[1] || `resume-${candidateId}.pdf`;
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `resume-${candidateId}.pdf`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.update(toastId, {
+        render: 'Resume downloaded successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (error) {
       console.error('Error downloading resume:', error);
+      
+      let errorMessage = 'Failed to download resume. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
   const handleDeleteCandidate = async (candidateId) => {
+    if (!window.confirm('Are you sure you want to delete this candidate?')) {
+      return;
+    }
+    
+    const toastId = toast.loading('Deleting candidate...');
+    
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`http://localhost:5000/api/candidates/${candidateId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
+      
+      toast.update(toastId, {
+        render: 'Candidate deleted successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
       fetchCandidates();
     } catch (error) {
       console.error('Error deleting candidate:', error);
+      
+      let errorMessage = 'Failed to delete candidate. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
-  const filteredCandidates = candidates.filter(candidate => {
-    const matchesSearch = (
+  const filteredCandidates = candidates.filter((candidate) => {
+    const matchesSearch =
       candidate.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.position.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+      candidate.position.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !filterStatus || candidate.status === filterStatus;
     const matchesPosition = !filterPosition || candidate.position === filterPosition;
     return matchesSearch && matchesStatus && matchesPosition;
   });
 
-  // Unique positions for filter dropdown
-  const uniquePositions = Array.from(new Set(candidates.map(c => c.position)));
+  const uniquePositions = Array.from(new Set(candidates.map((c) => c.position)));
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -196,255 +421,58 @@ const Candidates = () => {
 
   return (
     <div className="candidates-page">
-      <div className="candidates-controls">
-        <div className="filters">
-          <select
-            className="filter-dropdown"
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-          >
-            <option value="">Status</option>
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <select
-            className="filter-dropdown"
-            value={filterPosition}
-            onChange={e => setFilterPosition(e.target.value)}
-          >
-            <option value="">Position</option>
-            {uniquePositions.map(pos => (
-              <option key={pos} value={pos}>{pos}</option>
-            ))}
-          </select>
-        </div>
-        <input
-          className="search-bar"
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-        <button className="add-candidate-btn" onClick={() => setShowForm(true)}>
-          Add Candidate
-        </button>
-      </div>
+      <CandidateFilters
+        filterStatus={filterStatus}
+        filterPosition={filterPosition}
+        searchTerm={searchTerm}
+        onStatusChange={setFilterStatus}
+        onPositionChange={setFilterPosition}
+        onSearchChange={setSearchTerm}
+        onAddClick={() => setShowForm(true)}
+        statusOptions={STATUS_OPTIONS}
+        uniquePositions={uniquePositions}
+      />
 
-      <div className="candidates-table-container">
-        <table className="candidates-table">
-          <thead>
-            <tr>
-              <th>Sr no.</th>
-              <th>Candidates Name</th>
-              <th>Email Address</th>
-              <th>Phone Number</th>
-              <th>Position</th>
-              <th>Status</th>
-              <th>Experience</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCandidates.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center' }}>No candidates found.</td></tr>
-            ) : (
-              filteredCandidates.map((candidate, idx) => (
-                <tr key={candidate._id}>
-                  <td>{String(idx + 1).padStart(2, '0')}</td>
-                  <td>{candidate.firstName} {candidate.lastName}</td>
-                  <td>{candidate.email}</td>
-                  <td>{candidate.phone}</td>
-                  <td>{candidate.position}</td>
-                  <td>
-                    <div className="status-pill-dropdown">
-                      <button
-                        className={`status-pill status-${candidate.status}`}
-                        style={{ borderColor: STATUS_OPTIONS.find(opt => opt.value === candidate.status)?.color }}
-                        onClick={e => {
-                          e.stopPropagation();
-                          setStatusDropdownOpen(candidate._id === statusDropdownOpen ? null : candidate._id);
-                        }}
-                      >
-                        {STATUS_OPTIONS.find(opt => opt.value === candidate.status)?.label || candidate.status}
-                        <span className="dropdown-arrow">▼</span>
-                      </button>
-                      {statusDropdownOpen === candidate._id && (
-                        <div className="status-dropdown-menu">
-                          {STATUS_OPTIONS.map(opt => (
-                            <div
-                              key={opt.value}
-                              className="status-dropdown-item"
-                              onClick={() => {
-                                handleStatusChange(candidate._id, opt.value);
-                                setStatusDropdownOpen(null);
-                              }}
-                            >
-                              {opt.label}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td>{candidate.experience}{candidate.experience !== '0' ? '+' : ''}</td>
-                  <td>
-                    <div className="action-menu-container">
-                      <button
-                        className="action-menu-btn"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setActionMenuOpen(candidate._id === actionMenuOpen ? null : candidate._id);
-                        }}
-                      >
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                      </button>
-                      {actionMenuOpen === candidate._id && (
-                        <div className="action-dropdown-menu">
-                          <div
-                            className="action-dropdown-item"
-                            onClick={() => {
-                              handleDownloadResume(candidate._id);
-                              setActionMenuOpen(null);
-                            }}
-                          >
-                            Download Resume
-                          </div>
-                          <div
-                            className="action-dropdown-item delete"
-                            onClick={() => {
-                              handleDeleteCandidate(candidate._id);
-                              setActionMenuOpen(null);
-                            }}
-                          >
-                            Delete Candidate
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <CandidateTable
+        candidates={filteredCandidates}
+        statusOptions={STATUS_OPTIONS}
+        statusDropdownOpen={statusDropdownOpen}
+        actionMenuOpen={actionMenuOpen}
+        onStatusChange={handleStatusChange}
+        onStatusDropdownToggle={setStatusDropdownOpen}
+        onDownloadResume={handleDownloadResume}
+        onDeleteCandidate={handleDeleteCandidate}
+        onActionMenuToggle={setActionMenuOpen}
+        onConvertToEmployee={handleConvertToEmployee}
+        statusDropdownRef={statusDropdownRef}
+        actionMenuRef={actionMenuRef}
+      />
 
       {showForm && (
-        <div className="modal-overlay">
-          <div className="modal-container" ref={formRef}>
-            <div className="modal-header">
-              <span>Add New Candidate</span>
-              <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
-            </div>
-            <form className="modal-form" onSubmit={handleSubmit}>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>First Name<span>*</span></label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Last Name<span>*</span></label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last Name"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Email Address<span>*</span></label>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Phone Number<span>*</span></label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    placeholder="Phone Number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Position<span>*</span></label>
-                  <input
-                    type="text"
-                    name="position"
-                    placeholder="Position"
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Experience<span>*</span></label>
-                  <input
-                    type="number"
-                    name="experience"
-                    placeholder="Experience"
-                    value={formData.experience}
-                    onChange={handleInputChange}
-                    required
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Resume<span>*</span></label>
-                  <div className="file-upload-group">
-                    <input
-                      type="file"
-                      name="resume"
-                      id="resume-upload"
-                      onChange={handleInputChange}
-                      accept=".pdf,.doc,.docx"
-                      style={{ display: 'none' }}
-                    />
-                    <label htmlFor="resume-upload" className="file-upload-label">
-                      {formData.resume ? formData.resume.name : 'Upload Resume'}
-                      <span className="upload-icon">⇪</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="modal-save-btn"
-                disabled={!isFormValid()}
-              >
-                Save
-              </button>
-            </form>
-          </div>
-        </div>
+        <CandidateForm  
+          formData={formData}
+          onInputChange={handleInputChange}
+          onSubmit={handleSubmit}
+          onClose={() => setShowForm(false)}
+          isFormValid={isFormValid()}
+          isSubmitting={isSubmitting}
+          formRef={formRef}
+        />
+      )}
+
+      {showEmployeeForm && (
+        <EmployeeForm
+          formData={employeeFormData}
+          onInputChange={handleEmployeeInputChange}
+          onSubmit={handleEmployeeSubmit}
+          onClose={() => setShowEmployeeForm(false)}
+          isFormValid={isEmployeeFormValid()}
+          formRef={employeeFormRef}
+          isEditing={false}
+        />
       )}
     </div>
   );
 };
 
-export default Candidates; 
+export default Candidates;

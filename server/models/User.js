@@ -24,6 +24,34 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  address: {
+    type: String,
+    trim: true
+  },
+  department: {
+    type: String,
+    enum: ['Human Resources', 'Engineering', 'Marketing', 'Sales', 'Finance', 'Operations'],
+    default: 'Human Resources'
+  },
+  position: {
+    type: String,
+    trim: true
+  },
+  joinDate: {
+    type: Date,
+    default: Date.now
+  },
+  bio: {
+    type: String,
+    trim: true
+  },
+  avatar: {
+    type: String // URL to avatar image
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -50,4 +78,4 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 
 const User = mongoose.model('User', userSchema);
 
-module.exports = User; 
+module.exports = User;

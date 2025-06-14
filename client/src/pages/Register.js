@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import '../styles/Auth.css';
 
 const Register = () => {
@@ -23,22 +24,78 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
+    const toastId = toast.loading('Creating your account...');
+
     try {
       await axios.post('http://localhost:5000/api/auth/register', {
         name: formData.fullName,
         email: formData.email,
         password: formData.password
       });
-      navigate('/login');
+
+      toast.update(toastId, {
+        render: 'Account created successfully! Please login to continue.',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      // Clear form data
+      setFormData({
+        fullName: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+
+      // Navigate after a short delay to show the success message
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500);
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.status === 400) {
+        errorMessage = 'Invalid registration data. Please check your inputs.';
+      } else if (err.response?.status === 409) {
+        errorMessage = 'An account with this email already exists.';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.code === 'NETWORK_ERROR' || !err.response) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+
+      setError(errorMessage);
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -63,6 +120,7 @@ const Register = () => {
               placeholder="Full name"
               value={formData.fullName}
               onChange={handleChange}
+              disabled={loading}
               required
             />
           </div>
@@ -74,6 +132,7 @@ const Register = () => {
               placeholder="Email Address"
               value={formData.email}
               onChange={handleChange}
+              disabled={loading}
               required
             />
           </div>
@@ -85,12 +144,14 @@ const Register = () => {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
+              disabled={loading}
               required
             />
             <span
               className="toggle-password"
-              onClick={() => setShowPassword((prev) => !prev)}
+              onClick={() => !loading && setShowPassword((prev) => !prev)}
               tabIndex={0}
+              style={{ cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 }}
             >
               {showPassword ? '🙈' : '👁️'}
             </span>
@@ -103,12 +164,14 @@ const Register = () => {
               placeholder="Confirm Password"
               value={formData.confirmPassword}
               onChange={handleChange}
+              disabled={loading}
               required
             />
             <span
               className="toggle-password"
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              onClick={() => !loading && setShowConfirmPassword((prev) => !prev)}
               tabIndex={0}
+              style={{ cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.5 : 1 }}
             >
               {showConfirmPassword ? '🙈' : '👁️'}
             </span>
@@ -126,4 +189,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;

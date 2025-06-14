@@ -1,7 +1,7 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext(null);
 
@@ -12,64 +12,106 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
+  const logout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    navigate("/login");
+  };
 
-        if (decoded.exp < currentTime) {
-          // Token expired
-          localStorage.removeItem('token');
-          setUser(null);
-        } else {
-          // Token valid
-          setUser(decoded);
+  const refreshUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await axios.get(
+        "http://localhost:5000/api/auth/me",
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
-      } catch (error) {
-        console.error('Error decoding token:', error);
-        localStorage.removeItem('token');
-        setUser(null);
+      );
+
+      const userData = response.data;
+      setUser({
+        ...userData,
+        id: userData._id || userData.id,
+        userId: userData._id || userData.id
+      });
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      // If token is invalid, logout user
+      if (error.response?.status === 401) {
+        logout();
       }
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const decoded = jwtDecode(token);
+          const currentTime = Date.now() / 1000;
+
+          if (decoded.exp < currentTime) {
+            // Token expired
+            localStorage.removeItem("token");
+            setUser(null);
+          } else {
+            // Token valid - fetch complete user data from API
+            await refreshUser();
+          }
+        } catch (error) {
+          console.error("Error decoding token:", error);
+          localStorage.removeItem("token");
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password
-      });
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        {
+          email,
+          password,
+        }
+      );
 
       const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      setUser(user);
-      navigate('/');
+      localStorage.setItem("token", token);
+      // Ensure consistent id mapping
+      setUser({
+        ...user,
+        id: user.id || user._id, // Map to id field consistently
+        userId: user.id || user._id // Also set userId for consistency
+      });
+      navigate("/");
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed'
+        message: error.response?.data?.message || "Login failed",
       };
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/login');
   };
 
   const value = {
     user,
     loading,
     login,
-    logout
+    logout,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export default AuthContext; 
+export default AuthContext;

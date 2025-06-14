@@ -9,7 +9,6 @@ import Layout from './components/Layout';
 // Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 import Candidates from './pages/Candidates';
 import Employees from './pages/Employees';
 import Attendance from './pages/Attendance';
@@ -17,6 +16,7 @@ import Leaves from './pages/Leaves';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -42,7 +42,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<Candidates />} />
           <Route path="candidates" element={<Candidates />} />
           <Route path="employees" element={<Employees />} />
           <Route path="attendance" element={<Attendance />} />
@@ -50,10 +50,11 @@ function App() {
           <Route path="payroll" element={<Payroll />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>
     </>
   );
 }
 
-export default App; 
+export default App;

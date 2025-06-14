@@ -54,28 +54,7 @@ const Settings = () => {
 
   return (
     <div className="settings-page">
-      <div className="settings-controls">
-        <select
-          className="filter-dropdown"
-          value={categoryFilter}
-          onChange={e => setCategoryFilter(e.target.value)}
-        >
-          <option value="">Category</option>
-          {CATEGORY_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-        <input
-          className="search-bar"
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-        <button className="add-setting-btn" onClick={() => { setShowForm(true); setEditId(null); }}>
-          Add Setting
-        </button>
-      </div>
+      
       <div className="settings-table-container">
         <table className="settings-table">
           <thead>

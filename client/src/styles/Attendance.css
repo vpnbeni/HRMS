@@ -6,58 +6,66 @@
 .attendance-controls {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 1.5rem;
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
 }
 
 .filter-dropdown {
     padding: 0.6rem 1.5rem 0.6rem 1rem;
     border: 1.5px solid #c7b6e5;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
     font-size: 1rem;
     background: #fff;
     color: #3d246c;
     outline: none;
-    min-width: 130px;
-    transition: border 0.2s;
+    width: 150px;
+    transition: all 0.2s ease;
 }
 
 .filter-dropdown:focus {
     border-color: #6c47b6;
+    box-shadow: 0 0 0 3px rgba(108, 71, 182, 0.1);
 }
 
 .search-bar {
-    max-width: 260px;
+    width: 300px;
     padding: 0.6rem 1.5rem;
     border: 1.5px solid #c7b6e5;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
     font-size: 1rem;
     background: #fff;
     color: #3d246c;
     outline: none;
-    transition: border 0.2s;
+    transition: all 0.2s ease;
 }
 
 .search-bar:focus {
     border-color: #6c47b6;
 }
 
-.add-attendance-btn {
-    background: #6c47b6;
-    color: #fff;
-    border: none;
-    border-radius: 2rem;
-    padding: 0.7rem 2.2rem;
-    font-size: 1.1rem;
-    font-weight: 500;
+.attendance-date {
+    display: flex;
+    align-items: center;
     margin-left: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(108, 71, 182, 0.08);
-    transition: background 0.2s;
 }
 
-.add-attendance-btn:hover {
-    background: #4b2e8c;
+.date-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #6c47b6;
+    background: #f3eafd;
+    padding: 0.6rem 1.5rem;
+    border-radius: 2rem;
+    border: 1.5px solid #c7b6e5;
 }
 
 /* Table Styles */
@@ -152,6 +160,10 @@
     align-items: center;
     gap: 0.5rem;
     transition: border 0.2s, color 0.2s;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .status-pill.status-present {
@@ -174,6 +186,7 @@
     top: 110%;
     left: 0;
     min-width: 120px;
+    max-width: 150px;
     background: #fff;
     border-radius: 1rem;
     box-shadow: 0 4px 16px rgba(108, 71, 182, 0.12);
@@ -187,6 +200,9 @@
     color: #6c47b6;
     font-size: 1rem;
     transition: background 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .status-dropdown-item:hover {
@@ -410,13 +426,29 @@
 
     .attendance-controls {
         flex-direction: column;
-        align-items: stretch;
+        padding: 1rem;
         gap: 1rem;
     }
 
+    .filter-controls {
+        flex-direction: column;
+        width: 100%;
+        gap: 1rem;
+    }
+
+    .filter-dropdown,
     .search-bar {
-        margin-left: 0;
-        max-width: 100%;
+        width: 100%;
+    }
+
+    .attendance-date {
+        margin: 0;
+        justify-content: center;
+    }
+
+    .date-label {
+        font-size: 1rem;
+        padding: 0.5rem 1.2rem;
     }
 }
 

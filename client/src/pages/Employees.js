@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import '../styles/Employees.css';
+import EmployeeFilters from '../components/employees/EmployeeFilters';
+import EmployeeTable from '../components/employees/EmployeeTable';
+import EmployeeForm from '../components/employees/EmployeeForm';
 
 const POSITIONS = [
   'Intern', 'Full Time', 'Junior', 'Senior', 'Team Lead'
@@ -24,20 +28,33 @@ const Employees = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formRef = useRef();
+  const actionMenuRef = useRef();
 
   useEffect(() => {
     fetchEmployees();
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleActionMenuClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleActionMenuClickOutside);
+    };
   }, []);
 
   const handleClickOutside = (event) => {
     if (formRef.current && !formRef.current.contains(event.target)) {
       setShowForm(false);
       setEditId(null);
+      setIsEditing(false);
     }
-    setActionMenuOpen(null);
+  };
+
+  const handleActionMenuClickOutside = (event) => {
+    if (actionMenuRef.current && !actionMenuRef.current.contains(event.target)) {
+      setActionMenuOpen(null);
+    }
   };
 
   const fetchEmployees = async () => {
@@ -73,20 +90,40 @@ const Employees = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid()) return;
+    if (!isFormValid() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const toastId = toast.loading(editId ? 'Updating employee...' : 'Adding employee...');
+
     try {
       const token = localStorage.getItem('token');
       if (editId) {
         await axios.put(`http://localhost:5000/api/employees/${editId}`, formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        toast.update(toastId, {
+          render: 'Employee updated successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+        });
       } else {
         await axios.post('http://localhost:5000/api/employees', formData, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        
+        toast.update(toastId, {
+          render: 'Employee added successfully!',
+          type: 'success',
+          isLoading: false,
+          autoClose: 3000,
+        });
       }
+      
       setShowForm(false);
       setEditId(null);
+      setIsEditing(false);
       setFormData({
         firstName: '',
         lastName: '',
@@ -100,6 +137,20 @@ const Employees = () => {
       fetchEmployees();
     } catch (error) {
       console.error('Error saving employee:', error);
+      
+      let errorMessage = `Failed to ${editId ? 'update' : 'add'} employee. Please try again.`;
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,18 +166,45 @@ const Employees = () => {
       profileUrl: employee.profileUrl || ''
     });
     setEditId(employee._id);
+    setIsEditing(true);
     setShowForm(true);
   };
 
   const handleDelete = async (employeeId) => {
+    if (!window.confirm('Are you sure you want to delete this employee?')) {
+      return;
+    }
+    
+    const toastId = toast.loading('Deleting employee...');
+    
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`http://localhost:5000/api/employees/${employeeId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      toast.update(toastId, {
+        render: 'Employee deleted successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+      
       fetchEmployees();
     } catch (error) {
       console.error('Error deleting employee:', error);
+      
+      let errorMessage = 'Failed to delete employee. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.update(toastId, {
+        render: errorMessage,
+        type: 'error',
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
@@ -147,203 +225,41 @@ const Employees = () => {
 
   return (
     <div className="employees-page">
-      <div className="employees-controls">
-        <select
-          className="filter-dropdown"
-          value={filterPosition}
-          onChange={e => setFilterPosition(e.target.value)}
-        >
-          <option value="">Position</option>
-          {POSITIONS.map(pos => (
-            <option key={pos} value={pos}>{pos}</option>
-          ))}
-        </select>
-        <input
-          className="search-bar"
-          type="text"
-          placeholder="Search"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-        <button className="add-employee-btn" onClick={() => { setShowForm(true); setEditId(null); }}>
-          Add Employee
-        </button>
-      </div>
+      <EmployeeFilters
+        filterPosition={filterPosition}
+        searchTerm={searchTerm}
+        onPositionChange={setFilterPosition}
+        onSearchChange={setSearchTerm}
+        positions={POSITIONS}
+      />
 
-      <div className="employees-table-container">
-        <table className="employees-table">
-          <thead>
-            <tr>
-              <th>Profile</th>
-              <th>Employee Name</th>
-              <th>Email Address</th>
-              <th>Phone Number</th>
-              <th>Position</th>
-              <th>Department</th>
-              <th>Date of Joining</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEmployees.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center' }}>No employees found.</td></tr>
-            ) : (
-              filteredEmployees.map((employee) => (
-                <tr key={employee._id}>
-                  <td>
-                    <div className="employee-avatar">
-                      {employee.profileUrl ? (
-                        <img src={employee.profileUrl} alt="profile" />
-                      ) : (
-                        <span>{employee.firstName?.charAt(0) || 'U'}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>{employee.firstName} {employee.lastName}</td>
-                  <td>{employee.email}</td>
-                  <td>{employee.phone}</td>
-                  <td>{employee.position}</td>
-                  <td>{employee.department}</td>
-                  <td>{employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : ''}</td>
-                  <td>
-                    <div className="action-menu-container">
-                      <button
-                        className="action-menu-btn"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setActionMenuOpen(employee._id === actionMenuOpen ? null : employee._id);
-                        }}
-                      >
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                      </button>
-                      {actionMenuOpen === employee._id && (
-                        <div className="action-dropdown-menu">
-                          <div
-                            className="action-dropdown-item"
-                            onClick={() => {
-                              handleEdit(employee);
-                              setActionMenuOpen(null);
-                            }}
-                          >
-                            Edit
-                          </div>
-                          <div
-                            className="action-dropdown-item delete"
-                            onClick={() => {
-                              handleDelete(employee._id);
-                              setActionMenuOpen(null);
-                            }}
-                          >
-                            Delete
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <EmployeeTable
+        employees={filteredEmployees}
+        actionMenuOpen={actionMenuOpen}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onActionMenuToggle={setActionMenuOpen}
+        actionMenuRef={actionMenuRef}
+      />
 
       {showForm && (
-        <div className="modal-overlay">
-          <div className="modal-container" ref={formRef}>
-            <div className="modal-header">
-              <span>{editId ? 'Edit Employee Details' : 'Add New Employee'}</span>
-              <button className="modal-close" onClick={() => { setShowForm(false); setEditId(null); }}>×</button>
-            </div>
-            <form className="modal-form" onSubmit={handleSubmit}>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Full Name<span>*</span></label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First Name"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Email Address<span>*</span></label>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Phone Number<span>*</span></label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    placeholder="Phone Number"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Position<span>*</span></label>
-                  <select
-                    name="position"
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Select Position</option>
-                    {POSITIONS.map(pos => (
-                      <option key={pos} value={pos}>{pos}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="modal-form-row">
-                <div className="modal-form-group">
-                  <label>Department<span>*</span></label>
-                  <input
-                    type="text"
-                    name="department"
-                    placeholder="Department"
-                    value={formData.department}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="modal-form-group">
-                  <label>Date of Joining<span>*</span></label>
-                  <input
-                    type="date"
-                    name="joiningDate"
-                    value={formData.joiningDate}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="modal-save-btn"
-                disabled={!isFormValid()}
-              >
-                Save
-              </button>
-            </form>
-          </div>
-        </div>
+        <EmployeeForm
+          formData={formData}
+          onInputChange={handleInputChange}
+          onSubmit={handleSubmit}
+          onClose={() => { 
+            setShowForm(false); 
+            setEditId(null);
+            setIsEditing(false);
+          }}
+          isFormValid={isFormValid()}
+          isSubmitting={isSubmitting}
+          formRef={formRef}
+          isEditing={isEditing}
+        />
       )}
     </div>
   );
 };
 
-export default Employees; 
+export default Employees;

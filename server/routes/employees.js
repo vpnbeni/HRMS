@@ -52,7 +52,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Update an employee
-router.patch('/:id', auth, async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
     const employee = await Employee.findById(req.params.id);
     if (!employee) {
@@ -78,11 +78,11 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    await employee.remove();
+    await Employee.findByIdAndDelete(req.params.id);
     res.json({ message: 'Employee deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-module.exports = router; 
+module.exports = router;

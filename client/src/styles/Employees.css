@@ -68,7 +68,9 @@
     border-radius: 1.5rem;
     box-shadow: 0 4px 24px rgba(108, 71, 182, 0.10);
     padding: 0;
-    overflow-x: auto;
+    overflow: visible;
+    position: relative;
+    z-index: 1;
 }
 
 .employees-table {
@@ -76,6 +78,7 @@
     border-collapse: separate;
     border-spacing: 0;
     min-width: 900px;
+    overflow: visible;
 }
 
 .employees-table thead tr {
@@ -107,6 +110,8 @@
     background: #fff;
     border-bottom: 1px solid #f0eafd;
     vertical-align: middle;
+    overflow: visible !important;
+    position: static;
 }
 
 .employees-table tr:last-child td {
@@ -162,17 +167,29 @@
 }
 
 .action-dropdown-menu {
-    position: absolute;
-    top: 120%;
-    right: 0;
-    min-width: 120px;
+    position: fixed;
+    min-width: 170px;
     background: #fff;
     border-radius: 1rem;
     box-shadow: 0 4px 16px rgba(108, 71, 182, 0.12);
-    z-index: 20;
-    overflow: hidden;
+    z-index: 1000;
+    pointer-events: auto;
     display: flex;
     flex-direction: column;
+    right: 0;
+    margin-top: 0.5rem;
+    transform: translateZ(0);
+    overflow: hidden;
+}
+
+.dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    background: transparent;
 }
 
 .action-dropdown-item {
